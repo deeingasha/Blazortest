@@ -1,0 +1,256 @@
+﻿@page "/receive-drugs"
+@page "/receive-drugs/{Id}"
+@rendermode InteractiveServer
+@using BlazorApp1.Components.Models
+@using BlazorApp1.Components.Services
+@using static BlazorApp1.Components.Models.LpoDto
+@inject ILpoService LpoService
+@inject IDrugReceiptService DrugReceiptService
+@inject NavigationManager NavigationManager
+@inject ILogger<ReceiveDrugs> Logger
+
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title m-0">@(string.IsNullOrEmpty(Id) ? "Receive Drugs" : $"Receipt #{Id}")</h5>
+        </div>
+        <div class="card-body p-2">
+            <EditForm Model="@receiptModel" OnValidSubmit="HandleValidSubmit">
+                <DataAnnotationsValidator />
+
+                <div class="row g-1">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="form-label small mb-1">Order No (LPO)</label>
+                            <select class="form-select form-select-sm" value="@selectedLpoNo"
+                                @onchange="HandleLpoChange">
+                                <option value="">Select LPO</option>
+                                @foreach (var lpo in lpos)
+                                {
+                                    <option value="@lpo.LpoNo">@lpo.LpoNo - @lpo.SupplierName</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Supplier</label>
+                            <InputText @bind-Value="receiptModel.SupplierName" class="form-control form-control-sm"
+                                readonly />
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Order Date</label>
+                            <InputDate @bind-Value="receiptModel.OrderDate" class="form-control form-control-sm"
+                                readonly />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Remarks</label>
+                            <InputText @bind-Value="receiptModel.Remarks" class="form-control form-control-sm" />
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>LPO Status</label>
+                            <InputText @bind-Value="receiptModel.LpoStatus" class="form-control form-control-sm"
+                                readonly />
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Approved By</label>
+                            <InputText @bind-Value="receiptModel.ApprovedBy" class="form-control form-control-sm"
+                                readonly />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Items Table -->
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered table-hover table-striped">
+                        <thead>
+                            <tr>
+                                <th class="text-center" style="width: 40px">#</th>
+                                <th style="width: 120px">Drug</th>
+                                <th style="width: 80px">Inv#</th>
+                                <th style="width: 85px">Inv.Date</th>
+                                <th style="width: 85px">Exp</th>
+                                <th style="width: 50px">O.Q</th>
+                                <th style="width: 50px">R.Q</th>
+                                <th style="width: 50px">%</th>
+                                <th style="width: 50px">Bon</th>
+                                <th style="width: 80px">Total</th>
+                                <th style="width: 85px">Rcv.Date</th>
+                                <th style="width: 100px">Manuf.</th>
+                                <th style="width: 85px">Mnf.Date</th>
+                                <th style="width: 70px">Batch#</th>
+                                <th style="width: 70px">Status</th>
+                                <th style="width: 40px"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in receiptModel.Items)
+                            {
+                                <tr>
+                                    <td class="p-0 text-center align-middle">@item.ItemNo</td>
+                                    <td class="p-0 align-middle">@item.DrugName</td>
+                                    <td class="p-0"><InputText @bind-Value="item.InvoiceNo" class="form-control form-control-sm border-0 p-0" /></td>
+                                    <td class="p-0"><InputDate @bind-Value="item.InvoiceDate" class="form-control form-control-sm border-0 p-0" /></td>
+                                    <td class="p-0"><InputDate @bind-Value="item.ExpiryDate" class="form-control form-control-sm border-0 p-0" /></td>
+                                    <td class="p-0 text-end align-middle">@item.OrderedQty</td>
+                                    <td class="p-0"><InputNumber @bind-Value="item.ReceivedQty" class="form-control form-control-sm border-0 p-0" /></td>
+                                    <td class="p-0"><InputNumber @bind-Value="item.DiscountPercentage" class="form-control form-control-sm border-0 p-0" /></td>
+                                    <td class="p-0"><InputNumber @bind-Value="item.Bonus" class="form-control form-control-sm border-0 p-0" /></td>
+                                    <td class="p-0 text-end align-middle">@item.TotalPrice.ToString("N0")</td>
+                                    <td class="p-0"><InputDate @bind-Value="item.ReceivedDate" class="form-control form-control-sm border-0 p-0" /></td>
+                                    <td class="p-0"><InputText @bind-Value="item.Manufacturer" class="form-control form-control-sm border-0 p-0" /></td>
+                                    <td class="p-0"><InputDate @bind-Value="item.ManufactureDate" class="form-control form-control-sm border-0 p-0" /></td>
+                                    <td class="p-0"><InputText @bind-Value="item.BatchNo" class="form-control form-control-sm border-0 p-0" /></td>
+                                    <td class="p-0">
+                                        <select @bind="item.GoodsStatus" class="form-select form-select-sm border-0 p-0">
+                                            <option value="Good">Good</option>
+                                            <option value="Damaged">Bad</option>
+                                            <option value="Expired">Exp</option>
+                                        </select>
+                                    </td>
+                                    <td class="p-0 text-center">
+                                        <button type="button" class="btn btn-link btn-sm p-0" @onclick="() => SaveItem(item)">
+                                            <i class="bi bi-save"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string? Id { get; set; }
+
+    private DrugReceiptModel receiptModel = new();
+    private List<LpoModel> lpos = new();
+    private string selectedLpoNo = string.Empty;
+
+    private async Task HandleLpoChange(ChangeEventArgs e)
+    {
+        selectedLpoNo = e.Value?.ToString() ?? string.Empty;
+        await LoadLpoDetails();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            lpos = await LpoService.GetAllLposAsync();
+            Logger.LogInformation("Loaded {Count} LPOs", lpos.Count);
+            foreach (var lpo in lpos)
+            {
+                Logger.LogInformation("LPO: {No} - {Supplier}", lpo.LpoNo, lpo.SupplierName);
+            }
+
+            if (!string.IsNullOrEmpty(Id))
+            {
+                var receipt = await DrugReceiptService.GetReceiptAsync(Id);
+                if (receipt != null)
+                {
+                    receiptModel = receipt;
+                    Logger.LogInformation("Loaded receipt: {@Receipt}", receipt);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error initializing receive drugs page");
+        }
+    }
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+        if (!string.IsNullOrEmpty(receiptModel.LpoNo))
+        {
+            await LoadLpoDetails();
+        }
+    }
+
+    private async Task LoadLpoDetails()
+    {
+        if (string.IsNullOrEmpty(selectedLpoNo))
+        {
+            receiptModel = new DrugReceiptModel();
+            return;
+        }
+
+        var lpo = await LpoService.GetLpoAsync(selectedLpoNo);
+        if (lpo == null) return;
+
+        Logger.LogInformation("Loading LPO details: {@Lpo}", lpo);
+
+        receiptModel = new DrugReceiptModel
+        {
+            ReceiptNo = $"REC{DateTime.Now:yyyyMMddHHmmss}",
+            LpoNo = lpo.LpoNo,
+            SupplierId = lpo.SupplierId,
+            SupplierName = lpo.SupplierName,
+            OrderDate = lpo.LpoDate,
+            LpoStatus = lpo.IsApproved ? "Approved" : "Pending",
+            ApprovedBy = "System Admin",
+            Items = lpo.Items.Select(i => new DrugReceiptItemModel
+            {
+                ItemNo = i.ItemNo,
+                DrugNo = i.DrugNo,
+                DrugName = i.DrugName,
+                OrderedQty = i.Quantity,
+                ReceivedQty = 0,
+                TotalPrice = i.Total,
+                InvoiceDate = DateTime.Today,
+                ExpiryDate = DateTime.Today.AddYears(2),
+                ReceivedDate = DateTime.Today,
+                ManufactureDate = DateTime.Today.AddMonths(-6),
+                GoodsStatus = "Good"
+            }).ToList()
+        };
+
+        StateHasChanged();
+    }
+
+
+
+    private async Task SaveItem(DrugReceiptItemModel item)
+    {
+        try
+        {
+            await DrugReceiptService.SaveReceiptItemAsync(receiptModel.ReceiptNo, item);
+            // Show success notification
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving receipt item");
+            // Show error notification
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            await DrugReceiptService.SaveReceiptAsync(receiptModel);
+            NavigationManager.NavigateTo("drug-receipts");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving receipt");
+            // Show error notification
+        }
+    }
+}

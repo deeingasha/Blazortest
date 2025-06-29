@@ -1,0 +1,431 @@
+﻿@page "/pharmacy-lpo"
+@page "/pharmacy-lpo/{Id}"
+@rendermode InteractiveServer
+@using BlazorApp1.Components.Models
+@using BlazorApp1.Components.Services
+@using BlazorApp1.Components.Shared
+@using static BlazorApp1.Components.Models.LpoDto
+@inject ILpoService LpoService
+@inject IDrugService DrugService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject ILogger<Lpo> Logger
+<Notifications @ref="notifications" />
+
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-header py-2">
+            <h3 class="card-title m-0">@(string.IsNullOrEmpty(Id) ? "New LPO" : $"LPO #{Id}")</h3>
+        </div>
+        <div class="card-body">
+            <EditForm Model="@lpoModel" OnValidSubmit="HandleValidSubmit">
+                <DataAnnotationsValidator />
+
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <div class="form-group">
+                                <label>Supplier</label>
+                                <SearchableDropdown TItem="SupplierModel" Items="suppliers"
+                                    ItemText="s => s.SupplierName" OnSelected="HandleSupplierSelected"
+                                    Value="@(suppliers.FirstOrDefault(s => s.SupplierId == lpoModel.SupplierId))"
+                                    Placeholder="Search supplier..." />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Order No</label>
+                            <InputSelect TValue="string" Value="@lpoModel.LpoNo"
+                                ValueChanged="@(async value => await OnLpoSelected(new ChangeEventArgs { Value = value }))"
+                                ValueExpression="@(() => lpoModel.LpoNo)" class="form-select form-select-sm">
+                                <option value="">Select Order No</option>
+                                @foreach (var lpoNo in lpoNumbers)
+                                {
+                                    <option value="@lpoNo">@lpoNo</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>LPO Date</label>
+                            <InputDate @bind-Value="lpoModel.LpoDate" class="form-control form-control-sm" />
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Remarks</label>
+                            <InputText @bind-Value="lpoModel.Remarks" class="form-control form-control-sm" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Supplier Email</label>
+                            <InputText @bind-Value="lpoModel.SupplierEmail" class="form-control form-control-sm" />
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Password</label>
+                            <InputText @bind-Value="lpoModel.SupplierPassword" type="password"
+                                class="form-control form-control-sm" />
+                        </div>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <button type="button" class="btn btn-info  btn-sm me-2" @onclick="SendToSupplier">
+                            <i class="bi bi-envelope"></i> Send to Supplier
+                        </button>
+                        <button type="button" class="btn btn-secondary  btn-sm me-2" @onclick="PrintLpo">
+                            <i class="bi bi-printer"></i> Print LPO
+                        </button>
+                        <button type="button" class="btn btn-success  btn-sm " @onclick="ApproveLpo"
+                            disabled="@(!CanApproveLpo)">
+                            <i class="bi bi-check-circle"></i> Approve LPO
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Drug Selection -->
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div class="input-group">
+                            <select @bind="selectedDrugId" class="form-select form-select-sm">
+                                <option value="">Select Drug</option>
+                                @foreach (var drug in drugs)
+                                {
+                                    <option value="@drug.DrugNo">@drug.DrugName</option>
+                                }
+                            </select>
+                            <button type="button" class="btn btn-primary btn-sm" @onclick="AddDrug">
+                                <i class="bi bi-plus"></i> Add Drug
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Items Table -->
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered table-hover">
+                        <thead>
+                            <tr>
+                                <th>Item No</th>
+                                <th>Drug Name</th>
+                                <th>Unit Price</th>
+                                <th>Quantity</th>
+                                <th>Total</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in lpoModel.Items)
+                            {
+                                <tr>
+                                    <td>@item.ItemNo</td>
+                                    <td>@item.DrugName</td>
+                                    <td>
+                                        <InputNumber @bind-Value="item.UnitPrice"
+                                            @bind-Value:after="() => OnItemChanged(item)"
+                                            @onkeydown="@(e => HandleKeyPressWithPrevent(e, item, "price"))"
+                                            id="@($"price_{item.ItemNo}")" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <InputNumber @bind-Value="item.Quantity"
+                                            @bind-Value:after="() => OnItemChanged(item)"
+                                            @onkeydown="@(e => HandleKeyPressWithPrevent(e, item, "quantity"))"
+                                            id="@($"qty_{item.ItemNo}")" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>@item.Total.ToString("C")</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-danger"
+                                            @onclick="() => RemoveItem(item)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="4" class="text-end"><strong>Total:</strong></td>
+                                <td colspan="2">@lpoModel.TotalAmount.ToString("C")</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col">
+                        <button type="button" class="btn btn-warningbtn-sm me-2" @onclick="ClearForm">
+                            <i class="bi bi-x-circle"></i> Clear
+                        </button>
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="bi bi-save"></i> Save LPO
+                        </button>
+                    </div>
+                </div>
+            </EditForm>
+
+        </div>
+    </div>
+</div>
+
+
+@code {
+    [Parameter]
+    public string? Id { get; set; }
+
+    private LpoModel lpoModel = new();
+    private List<SupplierModel> suppliers = new();
+    private List<string> lpoNumbers = new();
+    private List<DrugModel> drugs = new();
+    private string selectedDrugId = string.Empty;
+    private bool CanApproveLpo => lpoModel.Items.Any() && !string.IsNullOrEmpty(lpoModel.SupplierId);
+
+    private Notifications notifications = default!;
+
+    //Search and filter
+    @* private string supplierSearchText = string.Empty; *@
+
+    @* private List<SupplierModel> filteredSuppliers = new(); *@
+
+    @* private IEnumerable<SupplierModel> FilteredSuppliers => suppliers
+    .Where(s => string.IsNullOrEmpty(supplierSearchText) ||
+    s.SupplierName.Contains(supplierSearchText, StringComparison.OrdinalIgnoreCase))
+    .OrderBy(s => s.SupplierName); *@
+
+    protected override async Task OnInitializedAsync()
+    {
+        suppliers = await LpoService.GetSuppliersAsync();
+        drugs = await DrugService.GetDrugsAsync();
+
+        if (!string.IsNullOrEmpty(Id))
+        {
+            var lpo = await LpoService.GetLpoAsync(Id);
+            if (lpo != null)
+            {
+                lpoModel = lpo;
+            }
+        }
+    }
+
+    private void AddDrug()
+    {
+        if (string.IsNullOrEmpty(selectedDrugId)) return;
+
+        var drug = drugs.FirstOrDefault(d => d.DrugNo == selectedDrugId);
+        if (drug == null) return;
+
+        var item = new LpoItemModel
+        {
+            ItemNo = (lpoModel.Items.Count + 1).ToString(),
+            DrugNo = drug.DrugNo,
+            DrugName = drug.DrugName,
+            UnitPrice = drug.UnitPrice,
+            Quantity = 1
+        };
+
+        lpoModel.Items.Add(item);
+        selectedDrugId = string.Empty;
+        notifications?.ShowAsync($"Added {drug.DrugName} to the list", NotificationType.Success);
+        CalculateTotal();
+    }
+    private async Task HandleSupplierSelected(SupplierModel supplier)
+    {
+        await HandleSupplierChangedAsync(supplier.SupplierId);
+    }
+    private async Task HandleSupplierChangedAsync(string value)
+    {
+
+        Logger.LogInformation("Supplier changed to: {SupplierId}", value);
+        // Clear existing data
+        lpoModel = new LpoModel
+        {
+            SupplierId = value,
+            LpoDate = DateTime.Today
+        };
+
+        if (!string.IsNullOrEmpty(value))
+        {
+            try
+            {
+                lpoNumbers = await LpoService.GetLpoNumbersAsync(value);
+                if (!lpoNumbers.Any())
+                {
+                    if (notifications != null)
+                    {
+                        await notifications.ShowAsync("No orders found for this supplier", NotificationType.Info);
+                    }
+                }
+                else
+                {
+                    Logger.LogInformation("Loaded {Count} LPO numbers for supplier {SupplierId}",
+                    lpoNumbers.Count, value);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error loading LPO numbers");
+                if (notifications != null)
+                {
+                    await notifications.ShowAsync("Error loading orders", NotificationType.Error);
+                }
+                lpoNumbers.Clear();
+            }
+        }
+        else
+        {
+            lpoNumbers.Clear();
+        }
+        // Ensure UI updates
+        StateHasChanged();
+    }
+    private async Task OnLpoSelected(ChangeEventArgs e)
+    {
+        var selectedLpoNo = e.Value?.ToString();
+        if (!string.IsNullOrEmpty(selectedLpoNo))
+        {
+            var lpo = await LpoService.GetLpoAsync(selectedLpoNo);
+            if (lpo != null)
+            {
+                lpoModel = lpo;
+                // Calculate total after loading LPO
+                CalculateTotal();
+
+                Logger.LogInformation("Loaded LPO details for {LpoNo}", selectedLpoNo);
+                if (notifications != null)
+                {
+                    await notifications.ShowAsync($"Succesfully Loaded LPO #{selectedLpoNo}", NotificationType.Info);
+                }
+            }
+        }
+        else
+        {
+            // Clear form if no LPO selected
+            lpoModel = new LpoModel
+            {
+                SupplierId = lpoModel.SupplierId,
+                LpoDate = DateTime.Today
+            };
+            CalculateTotal();
+        }
+    }
+
+    private void RemoveItem(LpoItemModel item)
+    {
+        lpoModel.Items.Remove(item);
+        CalculateTotal();
+        notifications?.ShowAsync($"Removed {item.DrugName} from the list", NotificationType.Warning);
+    }
+
+    private void CalculateTotal()
+    {
+        if (lpoModel is null || lpoModel.Items is null)
+        {
+            return;
+        }
+
+        lpoModel.TotalAmount = lpoModel.Items.Sum(i => i.Total);
+        Logger.LogDebug("Calculated total: {Total} from {Count} items",
+        lpoModel.TotalAmount, lpoModel.Items.Count);
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            Logger.LogDebug("Submitting LPO: {@LpoModel}", lpoModel);
+            var lpoNo = await LpoService.SaveLpoAsync(lpoModel);
+            lpoModel.LpoNo = lpoNo; // Update with server-generated LPO number
+            Logger.LogInformation("LPO saved successfully with number: {LpoNo}", lpoNo);
+            if (notifications != null)
+            {
+                await notifications.ShowAsync($"LPO #{lpoNo} created successfully", NotificationType.Success);
+            }
+            NavigationManager.NavigateTo($"pharmacy-lpo/{lpoNo}");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving LPO");
+            if (notifications != null)
+            {
+                await notifications.ShowAsync("Failed to save LPO", NotificationType.Error);
+            }
+        }
+    }
+
+    private void OnItemChanged(LpoItemModel item)
+    {
+        Logger.LogDebug("Item changed: {ItemNo}, Price: {Price}, Quantity: {Quantity}",
+        item.ItemNo, item.UnitPrice, item.Quantity);
+        CalculateTotal();
+        StateHasChanged();
+    }
+    private void HandleKeyPressWithPrevent(KeyboardEventArgs e, LpoItemModel item, string field)
+    {
+        if (e.Key == "Enter")
+        {
+            var currentIndex = lpoModel.Items.IndexOf(item);
+
+            _ = field switch
+            {
+                "price" => JSRuntime.InvokeVoidAsync("focusElement", $"qty_{item.ItemNo}"),
+                "quantity" when currentIndex < lpoModel.Items.Count - 1 =>
+                JSRuntime.InvokeVoidAsync("focusElement", $"price_{lpoModel.Items[currentIndex + 1].ItemNo}"),
+                _ => ValueTask.CompletedTask
+            };
+        }
+    }
+    private void ClearForm()
+    {
+        lpoModel = new LpoModel();
+        notifications?.ShowAsync("Form cleared", NotificationType.Warning);
+        Logger.LogInformation("LPO form cleared");
+    }
+
+
+    private async Task SendToSupplier()
+    {
+        try
+        {
+            await LpoService.SendLpoToSupplierAsync(lpoModel);
+            // Show success notification
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error sending LPO to supplier");
+            // Show error notification
+        }
+    }
+
+    private async Task PrintLpo()
+    {
+        try
+        {
+            await LpoService.GenerateLpoPdfAsync(lpoModel);
+            // Handle PDF download/print
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error generating LPO PDF");
+            // Show error notification
+        }
+    }
+
+    private async Task ApproveLpo()
+    {
+        try
+        {
+            lpoModel.IsApproved = true;
+            await LpoService.SaveLpoAsync(lpoModel);
+            // Show success notification
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error approving LPO"); // Show error notification
+        }
+    }
+}

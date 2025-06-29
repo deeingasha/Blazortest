@@ -1,0 +1,92 @@
+﻿@* @using BlazorApp1.Components.Models
+
+<div class="nav-item px-@(Level == 0 ? "3" : "2")">
+    @if (Item.Children.Any())
+    {
+        <div class="nav-link" @onclick="ToggleExpand">
+            <span class="bi @Item.Icon" aria-hidden="true"></span>
+            <span class="nav-text">@Item.Text</span>
+            <span class="bi @(Item.IsExpanded ? "bi-chevron-down" : "bi-chevron-right") float-end"></span>
+        </div>
+        @if (Item.IsExpanded)
+        {
+            <div class="submenu">
+                @foreach (var child in Item.Children)
+                {
+                    <NavMenuItem Item="child" Level="@(Level + 1)" />
+                }
+            </div>
+        }
+    }
+    else
+    {
+        <NavLink class="nav-link" href="@Item.Href">
+            <span class="bi @Item.Icon" aria-hidden="true"></span>
+            <span class="nav-text">@Item.Text</span>
+        </NavLink>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public MenuItem Item { get; set; } = new();
+
+    [Parameter]
+    public int Level { get; set; } = 0;
+
+    private void ToggleExpand()
+    {
+        Item.IsExpanded = !Item.IsExpanded;
+    }
+} *@
+
+@using BlazorApp1.Components.Models
+
+<div class="nav-item px-@(Level == 0 ? "3" : "2")">
+    @if (Item.Children.Any())
+    {
+        <div class="nav-link menu-parent" @onclick="HandleExpand">
+            <div class="d-flex align-items-center">
+                <span class="bi @Item.Icon" aria-hidden="true"></span>
+                <span class="nav-text text-white">@Item.Text</span>
+            </div>
+            <span class="bi @(Item.IsExpanded ? "bi-chevron-down" : "bi-chevron-right") text-white"></span>
+        </div>
+        @if (Item.IsExpanded)
+        {
+            <div class="submenu">
+                @foreach (var child in Item.Children)
+                {
+                    <NavMenuItem Item="child" Level="@(Level + 1)" OnExpand="OnExpand" />
+                }
+            </div>
+        }
+    }
+    else
+    {
+        <NavLink class="nav-link menu-item" href="@Item.Href">
+            <span class="bi @Item.Icon" aria-hidden="true"></span>
+            <span class="nav-text text-white">@Item.Text</span>
+        </NavLink>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public MenuItem Item { get; set; } = new();
+
+    [Parameter]
+    public int Level { get; set; } = 0;
+
+    [Parameter]
+    public EventCallback<MenuItem> OnExpand { get; set; }
+
+    private async Task HandleExpand()
+    {
+        Item.IsExpanded = !Item.IsExpanded;
+        if (Item.IsExpanded)
+        {
+            await OnExpand.InvokeAsync(Item);
+        }
+    }
+}

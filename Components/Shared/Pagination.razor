@@ -1,0 +1,43 @@
+﻿@if (TotalPages > 1)
+{
+    <nav aria-label="Page navigation" class="d-flex align-items-center justify-content-between">
+        <small class="text-muted">
+            @((CurrentPage - 1) * PageSize + 1)-@Math.Min(CurrentPage * PageSize, TotalCount) of @TotalCount
+        </small>
+        
+        <ul class="pagination pagination-sm mb-0">
+            <li class="page-item @(HasPreviousPage ? "" : "disabled")">
+                <button class="page-link py-1 px-2" @onclick="() => OnPageChanged.InvokeAsync(CurrentPage - 1)" disabled="@(!HasPreviousPage)">
+                    &laquo;
+                </button>
+            </li>
+            @for (int i = StartPage; i <= EndPage; i++)
+            {
+                var pageNumber = i;
+                <li class="page-item @(pageNumber == CurrentPage ? "active" : "")">
+                    <button class="page-link py-1 px-2" @onclick="() => OnPageChanged.InvokeAsync(pageNumber)">
+                        @pageNumber
+                    </button>
+                </li>
+            }
+            <li class="page-item @(HasNextPage ? "" : "disabled")">
+                <button class="page-link py-1 px-2" @onclick="() => OnPageChanged.InvokeAsync(CurrentPage + 1)" disabled="@(!HasNextPage)">
+                    &raquo;
+                </button>
+            </li>
+        </ul>
+    </nav>
+}
+
+@code {
+    [Parameter] public int CurrentPage { get; set; } = 1;
+    [Parameter] public int TotalPages { get; set; }
+    [Parameter] public int TotalCount { get; set; }
+    [Parameter] public int PageSize { get; set; }
+    [Parameter] public EventCallback<int> OnPageChanged { get; set; }
+
+    private bool HasPreviousPage => CurrentPage > 1;
+    private bool HasNextPage => CurrentPage < TotalPages;
+    private int StartPage => Math.Max(1, CurrentPage - 2);
+    private int EndPage => Math.Min(TotalPages, CurrentPage + 2);
+}

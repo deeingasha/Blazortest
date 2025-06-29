@@ -1,0 +1,214 @@
+﻿@page "/drug-entry"
+@rendermode InteractiveServer
+@using BlazorApp1.Components.Models
+@using BlazorApp1.Components.Services
+@using BlazorApp1.Components.Shared
+@inject IDrugService DrugService
+@inject ILogger<DrugEntry> Logger
+
+<div class="container-fluid">
+    <div class="row mb-3">
+      <div class="col-md-4">
+    <div class="input-group">
+        <select class="form-select" value="@selectedDrugType" @onchange="OnDrugTypeChanged">
+            <option value="">All Drug Types</option>
+            @foreach (var type in drugTypes)
+            {
+                  <option value="@type.DrugTypeNo">@type.DrugTypeName</option>
+            }
+        </select>
+    </div>
+</div>
+        <div class="col-md-4">
+            <div class="input-group">
+                <input type="text" class="form-control" placeholder="Search drugs..."
+                    @bind="searchTerm" @bind:event="oninput" @onkeyup="HandleSearch" />
+                <button class="btn btn-outline-secondary" type="button" @onclick="HandleSearch">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-primary" @onclick="AddNewDrug">
+                <i class="bi bi-plus-circle"></i> Add New Drug
+            </button>
+        </div>
+    </div>
+
+ @if (paginatedDrugs != null)
+    {
+        <div class="my-2">
+            <Pagination 
+                CurrentPage="@currentPage"
+                TotalPages="@paginatedDrugs.TotalPages"
+                TotalCount="@paginatedDrugs.TotalCount"
+                PageSize="@PageSize"
+                OnPageChanged="OnPageChanged" />
+        </div>
+    }
+    
+    <table class="table table-sm table-striped table-bordered">
+        <thead>
+            <tr>
+                <th>Drug Code</th>
+                <th>Drug Name</th>
+                <th>Drug Type</th>
+                <th>Stock Qty</th>
+                <th>Unit Price</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var drug in filteredDrugs)
+            {
+                <tr>
+                    <td>@drug.DrugNo</td>
+                    <td>@drug.DrugName</td>
+                    <td>@drug.DrugTypeName</td>
+                    <td>@drug.StockQuantity</td>
+                    <td>@drug.UnitPrice.ToString("N2")</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" @onclick="() => EditDrug(drug)">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (paginatedDrugs != null)
+{
+   
+    <div class="my-2">
+            <Pagination 
+                CurrentPage="@currentPage"
+                TotalPages="@paginatedDrugs.TotalPages"
+                TotalCount="@paginatedDrugs.TotalCount"
+                PageSize="@PageSize"
+                OnPageChanged="OnPageChanged" />
+        </div>
+}
+
+    @if (showDrugForm)
+    {
+        <DrugForm Drug="selectedDrug" 
+                  OnSave="HandleDrugSaved" 
+                  OnCancel="HandleDrugCancel" />
+    }
+</div>
+
+@code {
+    private const int PageSize = 50;
+    private int currentPage = 1;
+    private PaginatedList<DrugModel>? paginatedDrugs;
+
+    private List<DrugTypeModel> drugTypes = new();
+    private List<DrugModel> drugs = new();
+    private List<DrugModel> filteredDrugs = new();
+    private string selectedDrugType = string.Empty;
+    private string searchTerm = string.Empty;
+    private bool showDrugForm;
+    private DrugModel? selectedDrug;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        Logger.LogDebug("Loading inital data for DrugEntry component");
+        drugTypes = await DrugService.GetDrugTypesAsync();
+        Logger.LogInformation("Loaded {Count} drug types", drugTypes.Count);
+        await FilterDrugs();
+    }
+
+
+ private async Task OnDrugTypeChanged(ChangeEventArgs e)
+    {
+           selectedDrugType = e.Value?.ToString() ?? string.Empty;
+    Logger.LogInformation("Selected drug type changed to: '{DrugType}'", selectedDrugType);
+    
+    if (!string.IsNullOrEmpty(selectedDrugType))
+    {
+        var selectedType = drugTypes.FirstOrDefault(dt => dt.DrugTypeNo == selectedDrugType);
+        if (selectedType != null)
+        {
+            Logger.LogInformation("Selected drug type: {No} - {Name}", 
+                selectedType.DrugTypeNo, selectedType.DrugTypeName);
+        }
+        else
+        {
+            Logger.LogWarning("No matching drug type found for {DrugType}", selectedDrugType);
+        }
+    }
+    
+    await FilterDrugs();
+    }
+    private async Task FilterDrugs()
+    {
+      try
+          {
+            Logger.LogInformation("Calling DrugService.GetDrugsAsync with searchTerm: '{Search}', drugType: '{Type}', page: {Page}", 
+                searchTerm, selectedDrugType, currentPage);
+                
+            paginatedDrugs = await DrugService.GetDrugsAsync(currentPage, PageSize, searchTerm, selectedDrugType);
+            filteredDrugs = paginatedDrugs.Items;
+            Logger.LogInformation("Received {Count} filtered drugs (Page {Page} of {TotalPages})", 
+                filteredDrugs.Count, currentPage, paginatedDrugs.TotalPages);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error filtering drugs");
+            filteredDrugs = new List<DrugModel>();
+        }
+    }
+       private async Task OnPageChanged(int page)
+    {
+        currentPage = page;
+        await FilterDrugs();
+    }
+
+    private async Task HandleSearch()
+    {
+        await FilterDrugs();
+    }
+
+    private void AddNewDrug()
+    {
+        selectedDrug = new DrugModel();
+        showDrugForm = true;
+    }
+
+   private async Task EditDrug(DrugModel drug)
+{
+    Logger.LogInformation("Fetching fresh drug data for ID: {DrugNo}", drug.DrugNo);
+    
+    // Get fresh data from API
+    selectedDrug = await DrugService.GetDrugAsync(drug.DrugNo) ?? new DrugModel();
+    
+    if (selectedDrug != null)
+    {
+        Logger.LogInformation("Retrieved drug for editing: DrugNo={DrugNo}, Name={Name}, Type={Type}", 
+            selectedDrug.DrugNo, selectedDrug.DrugName, selectedDrug.DrugTypeNo);
+    }
+    
+    showDrugForm = true;
+}
+
+    private async Task HandleDrugSaved()
+    {
+        showDrugForm = false;
+        @* await LoadData(); *@
+         // Only refresh the drugs list, drug types are already cached
+    await FilterDrugs();
+    }
+
+    private void HandleDrugCancel()
+    {
+        showDrugForm = false;
+    }
+
+
+}

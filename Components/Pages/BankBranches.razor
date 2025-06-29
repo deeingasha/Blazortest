@@ -1,0 +1,122 @@
+﻿@using BlazorApp1.Components.Models
+@using BlazorApp1.Components.Services
+@using BlazorApp1.Components.Shared
+@inject ILogger<BankBranches> Logger
+@inject IBankService BankService
+@inject NavigationManager NavigationManager
+
+<Notifications @ref="notifications" />
+@if (showBranchForm)
+{
+    <BranchInfo BankId="@BankId" BranchId="@selectedBranchId" OnSaved="HandleBranchSaved" OnCancel="HandleBranchCancel" />
+}
+else
+{
+
+    <div class="row mb-3">
+        <div class="col">
+            <button class="btn btn-primary" @onclick="AddNewBranch">
+                <span class="bi bi-plus-circle"></span> Add Branch
+            </button>
+        </div>
+    </div>
+    <table class="table table-striped table-bordered">
+        <thead>
+            <tr>
+                <th>Branch No</th>
+                <th>Branch Name</th>
+                <th>Branch Code</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var branch in branches)
+            {
+                <tr>
+                    <td>@branch.BranchNo</td>
+                    <td>@branch.BranchName</td>
+                    <td>@branch.BranchCode</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" @onclick="() => EditBranch(branch)">
+                            <span class="bi bi-pencil"></span>
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Parameter]
+    public string? BankId { get; set; }
+
+    private List<BankBranchModel> branches = new();
+    private Notifications notifications = default!;
+
+    private bool showBranchForm = false;
+    private string? selectedBranchId;
+
+    private void AddNewBranch()
+    {
+        selectedBranchId = null;
+        showBranchForm = true;
+    }
+    private void EditBranch(BankBranchModel branch)
+    {
+        selectedBranchId = branch.BranchNo;
+        showBranchForm = true;
+    }
+    private async Task HandleBranchSaved()
+    {
+        if (notifications != null)
+        {
+            await notifications.ShowAsync("Branch saved successfully", NotificationType.Success);
+        }
+        showBranchForm = false;
+        selectedBranchId = null;
+        await LoadBranches();
+    }
+    private void HandleBranchCancel()
+    {
+        showBranchForm = false;
+        selectedBranchId = null;
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBranches();
+    }
+
+    private async Task LoadBranches()
+    {
+        if (!string.IsNullOrEmpty(BankId))
+        {
+            try
+            {
+                Logger?.LogDebug("Loading branches for bank {BankId}", BankId);
+                branches = await BankService.GetBankBranchesAsync(BankId);
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to load branches for bank {BankId}", BankId);
+                if (notifications != null)
+                {
+                    await notifications.ShowAsync("Failed to load branches", NotificationType.Error);
+                }
+            }
+        }
+    }
+
+    @* private void AddNewBranch()
+    {
+        NavigationManager.NavigateTo($"branch-info?BankId={BankId}");
+    }
+
+    private void EditBranch(BankBranchModel branch)
+    {
+        NavigationManager.NavigateTo($"branch-info/{branch.BranchNo}?BankId={BankId}");
+    } *@
+}

@@ -1,0 +1,68 @@
+﻿@page "/banks"
+@rendermode InteractiveServer
+@using BlazorApp1.Components.Models
+@using BlazorApp1.Components.Services
+@inject NavigationManager NavigationManager
+@inject IBankService BankService
+@inject ILogger<Banks> Logger
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>Banks List</h3>
+        <button class="btn btn-primary" @onclick="NavigateToNewBank">
+            <span class="bi bi-plus-circle"></span> Add New Bank
+        </button>
+    </div>
+
+    <table class="table table-striped table-bordered">
+        <thead>
+            <tr>
+                <th>Bank No</th>
+                <th>Bank Name</th>
+                <th>Bank Code</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var bank in banks)
+            {
+                <tr>
+                    <td>@bank.BankNo</td>
+                    <td>@bank.BankName</td>
+                    <td>@bank.BankCode</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" @onclick="() => EditBank(bank.BankNo)">
+                            <span class="bi bi-pencil"></span> Edit
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private List<BankModel> banks = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            banks = await BankService.GetAllBanksAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load banks");
+        }
+    }
+
+    private void NavigateToNewBank()
+    {
+        NavigationManager.NavigateTo("bank-info");
+    }
+
+    private void EditBank(string id)
+    {
+        NavigationManager.NavigateTo($"bank-info/{id}");
+    }
+}

@@ -1,0 +1,80 @@
+﻿@using BlazorApp1.Components.Core
+
+
+@if (IsVisible)
+{
+    <div class="notification-wrapper">
+        <div class="alert @AlertClass alert-dismissible fade show" role="alert">
+            <span class="@IconClass me-2" aria-hidden="true"></span>
+            @Message
+            <button type="button" class="btn-close" @onclick="Hide" aria-label="Close"></button>
+        </div>
+    </div>
+}
+
+@code {
+    private bool IsVisible;
+    private string Message = string.Empty;
+    private string AlertClass = string.Empty;
+    private string IconClass = string.Empty;
+
+    [Parameter]
+    public int AutoHideDelay { get; set; } = 1500;
+
+    public async Task ShowAsync(string message, NotificationType type = NotificationType.Success)
+    {
+        Message = message;
+        SetAlertClass(type);
+        SetIconClass(type);
+        IsVisible = true;
+        StateHasChanged();
+
+        if (AutoHideDelay > 0)
+        {
+            await AutoHideAsync();
+        }
+    }
+    private void SetAlertClass(NotificationType type)
+    {
+        AlertClass = type switch
+        {
+            NotificationType.Success => "alert-success",
+            NotificationType.Error => "alert-danger",
+            NotificationType.Warning => "alert-warning",
+            NotificationType.Info => "alert-info",
+            _ => "alert-info"
+        };
+    }
+
+    private void SetIconClass(NotificationType type)
+    {
+        IconClass = type switch
+        {
+            NotificationType.Success => "bi bi-check-circle",
+            NotificationType.Error => "bi bi-exclamation-triangle",
+            NotificationType.Warning => "bi bi-exclamation-circle",
+            NotificationType.Info => "bi bi-info-circle",
+            _ => "bi bi-info-circle"
+        };
+    }
+    public void Hide()
+    {
+        IsVisible = false;
+        StateHasChanged();
+    }
+
+    private async Task AutoHideAsync()
+    {
+        try
+        {
+            await Task.Delay(AutoHideDelay);
+            Hide();
+        }
+        catch (Exception)
+        {
+            // Ignore exceptions during auto-hide
+            return;
+
+        }
+    }
+}

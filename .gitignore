@@ -1,0 +1,41 @@
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio files
+.vs/
+*.user
+*.userosscache
+*.suo
+*.userprefs
+
+# IDE settings
+.vscode/
+*.code-workspace
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Local development settings
+appsettings.Development.json
+*.Development.json
+
+# Logs
+*.log
+logs/
+
+# Dependencies
+node_modules/
+wwwroot/lib/
+
+## Personal Files
+chat.md
+issues.md
+notes.md
+ideas.md
+logs.txt

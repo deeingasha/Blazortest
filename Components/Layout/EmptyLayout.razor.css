@@ -1,0 +1,19 @@
+.main {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgb(5, 39, 103) 0%, #3a0647 70%);
+}
+
+#blazor-error-ui {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  padding: 1rem;
+  background: lightyellow;
+  color: black;
+  z-index: 1000;
+}

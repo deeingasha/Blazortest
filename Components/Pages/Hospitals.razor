@@ -1,0 +1,94 @@
+﻿@page "/hospitals"
+@rendermode InteractiveServer
+@using BlazorApp1.Components.Models
+@using BlazorApp1.Components.Services
+@inject NavigationManager NavigationManager
+@inject IHospitalService HospitalService
+@inject ILogger<Hospitals> Logger
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>Hospitals</h3>
+        <button class="btn btn-primary" @onclick="NavigateToNewHospital">
+            <span class="bi bi-plus-square" </span> Add New Hospital
+        </button>
+    </div>
+
+    <table class="table table-hover table-sm table-bordered table-striped">
+        <thead>
+            <tr>
+                <th style="width: 50px;">#</th>
+                <th>Hospital Code</th>
+                <th>Hospital Name</th>
+                <th>Province</th>
+                <th>Area</th>
+                <th>Contact</th>
+                @* <th>Status</th> *@
+                <th style="width: 100px">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @{
+                int rowNumber = 1;
+            }
+            @foreach (var hospital in hospitals)
+            {
+                <tr>
+                    <td>@(rowNumber++)</td>
+                    <td>@hospital.Id</td>
+                    <td>@hospital.HospitalName</td>
+                    <td>@hospital.Province</td>
+                    <td>@hospital.Area</td>
+                    <td>@hospital.Tel1</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" @onclick="() => EditHospital(hospital.Id)"
+                            title="Edit Hospital">
+                            <span class="bi bi-pencil-square"></span>
+                        </button>
+                    </td>
+                </tr>
+            }
+
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private List<HospitalFormModel> hospitals = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            hospitals = await HospitalService.GetAllHospitalsAsync();
+            Logger.LogInformation($"Loaded {hospitals.Count} hospitals");
+            StateHasChanged(); // Force UI update
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load hospitals");
+        }
+    }
+
+    private void NavigateToNewHospital()
+    {
+        @* Console.WriteLine("Navigating to new hospital form");
+        NavigationManager.NavigateTo("/hospital-info", forceLoad: false); *@
+        try
+        {
+            Logger.LogInformation("Attempting to navigate to hospital form");
+            Console.WriteLine("Attempting to navigate to hospital form");
+            NavigationManager.NavigateTo("hospital-info", forceLoad: false);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to navigate to hospital form");
+            Console.WriteLine($"Navigation error: {ex.Message}");
+        }
+    }
+
+    private void EditHospital(string id)
+    {
+        NavigationManager.NavigateTo($"hospital-info/{id}");
+    }
+}

@@ -1,0 +1,207 @@
+﻿@page "/hospital-info"
+@page "/hospital-info/{Id}"
+@rendermode InteractiveServer
+@using BlazorApp1.Components.Models
+@using BlazorApp1.Components.Services
+@using BlazorApp1.Components.Core.Mapping
+@using BlazorApp1.Components.Shared
+
+@inject NavigationManager NavigationManager
+@inject IHospitalService HospitalService
+@inject IHospitalMapper Mapper
+@inject ILogger<HospitalInfo> Logger
+
+<Notifications @ref="notifications" />
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h3>@(Id == null ? "Add New Hospital" : "Edit Hospital")</h3>
+
+            <EditForm Model="@formModel" OnValidSubmit="HandleValidSubmit">
+                <DataAnnotationsValidator />
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label>Hospital Name</label>
+                            <InputText class="form-control" @bind-Value="formModel.HospitalName" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label>Country</label>
+                            <InputSelect class="form-control" @bind-Value="formModel.Country">
+                                <option value="">Select Country</option>
+                                @foreach (var country in countries)
+                                {
+                                    <option value="@country">@country</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label>Province</label>
+                            <InputSelect class="form-control" @bind-Value="formModel.Province">
+                                <option value="">Select Province</option>
+                                @foreach (var province in provinces)
+                                {
+                                    <option value="@province">@province</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label>Area</label>
+                            <InputSelect class="form-control" @bind-Value="formModel.Area">
+                                <option value="">Select Area</option>
+                                @foreach (var area in areas)
+                                {
+                                    <option value="@area">@area</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label>Postal Address</label>
+                            <InputText class="form-control" @bind-Value="formModel.PostalAddress" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label>Physical Address</label>
+                            <InputText class="form-control" @bind-Value="formModel.PhysicalAddress" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label>Tel1</label>
+                            <InputText class="form-control" @bind-Value="formModel.Tel1" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label>Tel2</label>
+                            <InputText class="form-control" @bind-Value="formModel.Tel2" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label>Mobile1</label>
+                            <InputText class="form-control" @bind-Value="formModel.Mobile1" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label>Mobile2</label>
+                            <InputText class="form-control" @bind-Value="formModel.Mobile2" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label>Fax</label>
+                            <InputText class="form-control" @bind-Value="formModel.Fax" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label>Website</label>
+                            <InputText class="form-control" @bind-Value="formModel.Website" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label>Email</label>
+                            <InputText class="form-control" @bind-Value="formModel.Email" />
+                        </div>
+                    </div>
+
+                    <div class="col-12 mt-3">
+                        <button type="submit" class="btn btn-primary me-2">Save</button>
+                        <button type="button" class="btn btn-secondary" @onclick="NavigateBack">Cancel</button>
+                    </div>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string? Id { get; set; }
+    private HospitalFormModel formModel = new()
+    {
+        Id = string.Empty,
+        HospitalName = string.Empty
+    };
+    //get values from mapper
+    private List<string> countries = new();
+    private List<string> provinces = new();
+    private List<string> areas = new();
+    private Notifications notifications = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Initialize the dropdown lists
+        countries = Mapper.GetCountries().ToList();
+        provinces = Mapper.GetProvinces().ToList();
+        areas = Mapper.GetAreas().ToList();
+
+        if (!string.IsNullOrEmpty(Id))
+        {
+            try
+            {
+                Logger.LogInformation("Initialising hospital with ID: {Id}", Id);
+                formModel = await HospitalService.GetHospitalAsync(Id);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error loading hospital with ID: {Id}", Id);
+                if (notifications is not null)
+                {
+                    await notifications.ShowAsync("Error loading hospital information.", NotificationType.Error);
+                }
+            }
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            Logger.LogDebug("Updating hospital with ID: {Id}", formModel.Id);
+            await HospitalService.SaveHospitalAsync(formModel);
+            if (notifications is not null)
+            {
+                await notifications.ShowAsync("Hospital saved successfully.", NotificationType.Success);
+            }
+            NavigateBack();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving hospital with ID: {Id}", formModel.Id);
+            if (notifications is not null)
+            {
+                await notifications.ShowAsync("Error saving hospital information.", NotificationType.Error);
+            }
+        }
+    }
+    private void NavigateBack()
+    {
+        NavigationManager.NavigateTo("hospitals");
+    }
+}

@@ -1,0 +1,71 @@
+﻿@page "/reagents"
+@rendermode InteractiveServer
+@using BlazorApp1.Components.Models
+@using BlazorApp1.Components.Services
+@inject NavigationManager NavigationManager
+@inject IReagentService ReagentService
+@inject ILogger<Reagents> Logger
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>Reagents Management</h3>
+        <button class="btn btn-primary" @onclick="NavigateToNewReagent">
+            <span class="bi bi-plus-square"></span> Add New Reagent
+        </button>
+    </div>
+
+    <table class="table table-striped table-bordered">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Reorder Level</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var reagent in reagents)
+            {
+                <tr>
+                    <td>@reagent.Reagent_No</td>
+                    <td>@reagent.Reagent_Name</td>
+                    <td>@reagent.Description</td>
+                    <td>@reagent.Reorder_Level</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" @onclick="() => EditReagent(reagent.Reagent_No)">
+                            <span class="bi bi-pencil"></span> Edit
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private List<ReagentModel> reagents = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            reagents = await ReagentService.GetAllReagentsAsync();
+            Logger.LogInformation("Loaded {Count} reagents", reagents.Count);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load reagents");
+        }
+    }
+
+    private void NavigateToNewReagent()
+    {
+        NavigationManager.NavigateTo("reagent-info");
+    }
+
+    private void EditReagent(string id)
+    {
+        NavigationManager.NavigateTo($"reagent-info/{id}");
+    }
+}

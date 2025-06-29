@@ -1,0 +1,162 @@
+﻿@page "/login"
+@layout EmptyLayout
+@rendermode InteractiveServer
+@using BlazorApp1.Components.Models
+@using BlazorApp1.Components.Services
+@using System.Linq.Expressions
+@inject IAuthService AuthService
+@inject NavigationManager NavigationManager
+@inject ILogger<LoginPage> Logger
+
+<PageTitle>Login - NeuHMIS</PageTitle>
+
+<div class="login-page">
+    <div class="login-container">
+        <div class="login-box">
+            <div class="text-center mb-4">
+                <img src="images/logo.png" alt="Logo" class="login-logo" />
+                <p class="text-muted">Sign in to your account</p>
+            </div>
+
+            <EditForm Model="@loginModel" OnValidSubmit="HandleValidSubmit" FormName="loginForm">
+                <DataAnnotationsValidator />
+                <CustomValidator @ref="customValidator" />
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger d-flex align-items-center" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <div>@errorMessage</div>
+                    </div>
+                }
+
+                <div class="form-floating mb-3">
+                    <InputText @bind-Value="loginModel.Username"
+                        class="@($"form-control {GetFieldCssClass(() => loginModel.Username)}")" id="username"
+                        placeholder=" " @onkeypress="ClearError" />
+                    <label for="username">Username</label>
+                    <ValidationMessage For="@(() => loginModel.Username)" class="text-danger validation-message" />
+                </div>
+
+
+
+                <div class="form-floating mb-3">
+                    <InputText @bind-Value="loginModel.Password" type="@(showPassword ? "text" : "password")"
+                        class="@($"form-control {GetFieldCssClass(() => loginModel.Password)}")" id="password"
+                        placeholder=" " @onkeypress="ClearError" />
+                    <label for="password">Password</label>
+                    <button type="button" class="password-toggle" @onclick="TogglePasswordVisibility" tabindex="-1">
+                        <i class="bi @(showPassword ? "bi-eye-slash" : "bi-eye")"></i>
+                    </button>
+                    <ValidationMessage For="@(() => loginModel.Password)" class="text-danger validation-message" />
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg" disabled="@isLoading">
+                        @if (isLoading)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            <span>Signing in...</span>
+                        }
+                        else
+                        {
+                            <span>Sign in</span>
+                        }
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginRequest loginModel = new();
+    private string errorMessage = string.Empty;
+    private bool isLoading;
+    private bool showPassword;
+    private CustomValidator? customValidator;
+    private int loginAttempts;
+    private const int MaxLoginAttempts = 3;
+
+    protected override async Task OnInitializedAsync()
+    {
+        loginAttempts = 0;
+        // Check if user is already logged in
+        try
+        {
+            var user = await AuthService.GetCurrentUserAsync();
+            if (user != null)
+            {
+                NavigationManager.NavigateTo("/", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Could not check current user during initialization");
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (loginAttempts >= MaxLoginAttempts)
+        {
+            errorMessage = "Too many failed attempts. Please try again later.";
+            return;
+        }
+
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+
+            Logger.LogDebug("Attempting to log in user {Username}", loginModel.Username);
+
+            var success = await AuthService.LoginAsync(loginModel.Username, loginModel.Password);
+            if (success)
+            {
+                Logger.LogInformation("User {Username} logged in successfully", loginModel.Username);
+                loginAttempts = 0;
+
+                // Force reload to ensure proper state
+                NavigationManager.NavigateTo("/", forceLoad: true);
+                loginModel = new(); // Clear sensitive data
+            }
+            else
+            {
+                @* Logger.LogWarning("Login failed for user {Username} - Attempt {Attempt} of {MaxAttempts}",
+                loginModel.Username, loginAttempts + 1, MaxLoginAttempts);
+                loginAttempts++;
+                errorMessage = "Invalid username or password";
+                await customValidator?.DisplayErrors(new[] { "Invalid credentials" }); *@
+                loginAttempts++;
+                errorMessage = "Invalid username or password";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Login failed");
+            errorMessage = "An error occurred during login";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void TogglePasswordVisibility() => showPassword = !showPassword;
+
+    private void ClearError()
+    {
+        if (!string.IsNullOrEmpty(errorMessage))
+        {
+            errorMessage = string.Empty;
+            customValidator?.ClearErrors();
+        }
+    }
+
+    private string GetFieldCssClass<T>(Expression<Func<T>> expr)
+    {
+        var fieldIdentifier = FieldIdentifier.Create(expr);
+        return customValidator?.FieldCssClass(fieldIdentifier) ?? string.Empty;
+    }
+}

@@ -1,0 +1,129 @@
+﻿@page "/bank-info"
+@page "/bank-info/{Id}"
+@rendermode InteractiveServer
+@using BlazorApp1.Components.Core
+@using BlazorApp1.Components.Models
+@using BlazorApp1.Components.Services
+@using BlazorApp1.Components.Shared
+@inject NavigationManager NavigationManager
+@inject IBankService BankService
+@inject ILogger<BankInfo> Logger
+
+<Notifications @ref="notifications" />
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">
+            @(string.IsNullOrEmpty(Id)
+                        ? "Add New Bank"
+                        : (string.IsNullOrWhiteSpace(formModel.BankName) ? "Edit Bank" : formModel.BankName))
+        </h4>
+        <button type="button" class="btn btn-outline-secondary" @onclick="NavigateBack">
+            <i class="bi bi-arrow-left"></i> Back
+        </button>
+    </div>
+
+    <div class="card">
+        <!-- Tabs -->
+        <div class="card-header ">
+            <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link @(activeTab == "details" ? "active" : "")" role="tab"
+                        @onclick='() => activeTab = "details"'>
+                        Bank Details
+                    </button>
+                </li>
+                @if (!string.IsNullOrEmpty(Id))
+                {
+                    <li class="nav-item">
+                        <button class="nav-link @(activeTab == "branches" ? "active" : "")" role="tab"
+                            @onclick='() => activeTab = "branches"'>
+                            Branches
+                        </button>
+                    </li>
+                }
+            </ul>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="card-body">
+            @if (activeTab == "details")
+            {
+                <EditForm Model="@formModel" OnValidSubmit="HandleValidSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label>Bank Name</label>
+                                <InputText @bind-Value="formModel.BankName" class="form-control" />
+                                <ValidationMessage For="@(() => formModel.BankName)" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label>Bank Code</label>
+                                <InputText @bind-Value="formModel.BankCode" class="form-control" />
+                                <ValidationMessage For="@(() => formModel.BankCode)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-primary me-2">Save</button>
+                        <button type="button" class="btn btn-secondary" @onclick="NavigateBack">Cancel</button>
+                    </div>
+                </EditForm>
+            }
+            else if (activeTab == "branches")
+            {
+                <BankBranches BankId="@Id" />
+            }
+        </div>
+    </div>
+</div>
+
+
+
+@code {
+    [Parameter]
+    public string? Id { get; set; }
+
+    private BankModel formModel = new();
+    private string activeTab = "details";
+    private Notifications notifications = default!;
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(Id))
+        {
+            formModel = await BankService.GetBankAsync(Id);
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            await BankService.SaveBankAsync(formModel);
+            if (notifications != null)
+            {
+                await notifications.ShowAsync("Bank saved successfully", NotificationType.Success);
+            }
+            NavigationManager.NavigateTo($"/bank-info/{formModel.BankNo}");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to save bank");
+            if (notifications != null)
+            {
+                await notifications.ShowAsync("Failed to save bank", NotificationType.Error);
+            }
+        }
+    }
+
+    private void NavigateBack()
+    {
+        NavigationManager.NavigateTo("banks");
+    }
+}

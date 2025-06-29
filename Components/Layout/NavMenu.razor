@@ -1,0 +1,267 @@
+﻿@* @rendermode InteractiveServer
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">NeuHMIS</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="nav flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+
+        <!-- Parameter Settings Menu -->
+        <div class="nav-item px-1">
+            <NavLink class="nav-link" @onclick="ToggleSubmenu">
+                <span class="bi bi-gear-fill" aria-hidden="true"></span> Parameter Settings
+                <span class="bi @(isExpandSubmenu ? "bi-chevron-down" : "bi-chevron-right") float-end"></span>
+            </NavLink>
+            @if (isExpandSubmenu)
+            {
+                <div class="submenu">
+                    <div class="nav-item px-2">
+                        <NavLink class="nav-link" href="hospitals">
+                            <span class="bi bi-hospital" aria-hidden="true"></span> Hospital Info
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-2">
+                        <NavLink class="nav-link" href="departments">
+                            <span class="bi bi-diagram-2" aria-hidden="true"></span> Department
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-2">
+                        <NavLink class="nav-link" href="coming-soon?page=Entity Type">
+                            <span class="bi bi-collection" aria-hidden="true"></span> Entity Type
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-2">
+                        <NavLink class="nav-link" href="coming-soon?page=Drug Type">
+                            <span class="bi bi-capsule" aria-hidden="true"></span> Drug Type
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-2">
+                        <NavLink class="nav-link" href="reagents">
+                            <span class="bi bi-flask" aria-hidden="true"></span> Lab Reagent
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-2">
+                        <NavLink class="nav-link" href="coming-soon?page=Email Settings">
+                            <span class="bi bi-envelope" aria-hidden="true"></span> Email Setting
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-2">
+                        <NavLink class="nav-link" href="coming-soon?page=SMS Settings">
+                            <span class="bi bi-chat" aria-hidden="true"></span> SMS Setting
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-2">
+                        <NavLink class="nav-link" href="banks">
+                            <span class="bi bi-bank" aria-hidden="true"></span> Bank Setting
+                        </NavLink>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Keep existing menu items -->
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="counter">
+                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="weather">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
+            </NavLink>
+        </div>
+    </nav>
+</div>
+@code {
+    private bool isExpandSubmenu = false;
+
+    private void ToggleSubmenu()
+    {
+        isExpandSubmenu = !isExpandSubmenu;
+        StateHasChanged();
+    }
+} *@
+
+@rendermode InteractiveServer
+@using BlazorApp1.Components.Models
+@using BlazorApp1.Components.Shared
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">NeuHMIS</a>
+    </div>
+</div>
+
+@* <input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="nav flex-column">
+        @foreach (var item in MenuItems)
+        {
+            <NavMenuItem Item="item" />
+        }
+    </nav>
+</div> *@
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="nav flex-column">
+        @foreach (var item in MenuItems)
+        {
+            <NavMenuItem Item="item" OnExpand="HandleMenuExpand" />
+        }
+    </nav>
+</div>
+
+@code {
+    private List<MenuItem> MenuItems = new()
+{
+new MenuItem
+{
+Text = "Home",
+Icon = "bi-house-door-fill",
+Href = ""
+},
+new MenuItem
+{
+Text = "Parameter Settings",
+Icon = "bi-gear-fill",
+Children = new List<MenuItem>
+{
+new()
+{
+Text = "Hospital Info",
+Icon = "bi-hospital",
+Href = "hospitals"
+},
+new()
+{
+Text = "Department",
+Icon = "bi-diagram-2",
+Href = "departments"
+},
+new()
+{
+Text = "Entity Type",
+Icon = "bi-collection",
+Href = "coming-soon?page=Entity Type"
+},
+new()
+{
+Text = "Drug Type",
+Icon = "bi-capsule",
+Href = "coming-soon?page=Drug Type"
+},
+new()
+{
+Text = "Lab Reagent",
+Icon = "bi-flask",
+Href = "reagents"
+},
+new()
+{
+Text = "Email Setting",
+Icon = "bi-envelope",
+Href = "coming-soon?page=Email Settings"
+},
+new()
+{
+Text = "SMS Setting",
+Icon = "bi-chat",
+Href = "coming-soon?page=SMS Settings"
+},
+new()
+{
+Text = "Bank Setting",
+Icon = "bi-bank",
+Href = "banks"
+}
+}
+},
+new MenuItem
+{
+Text = "Inventory Control",
+Icon = "bi-box-seam",
+Children = new List<MenuItem>
+{
+new()
+{
+Text = "Pharmacy",
+Icon = "bi-capsule",
+Children = new List<MenuItem>
+{
+new() { Text = "Drug Entity", Icon = "bi-capsule", Href = "drug-entry" },
+new() { Text = "LPO", Icon = "bi-file-text", Href = "pharmacy-lpo" },
+new() { Text = "Receive Drugs", Icon = "bi-box-arrow-in-down", Href = "receive-drugs" },
+new() { Text = "Stock Allocation", Icon = "bi-distribute-vertical", Href = "coming-soon?page=Stock Allocation" },
+new() { Text = "Issue Stock", Icon = "bi-box-arrow-right", Href = "coming-soon?page=Issue Stock" }
+}
+},
+new()
+{
+Text = "Laboratory",
+Icon = "bi-microscope",
+Children = new List<MenuItem>
+{
+new() { Text = "LPO", Icon = "bi-file-text", Href = "coming-soon?page=Lab LPO" },
+new() { Text = "Receive Reagents", Icon = "bi-box-arrow-in-down", Href = "coming-soon?page=Receive Lab Reagents" },
+new() { Text = "Update Stock", Icon = "bi-arrow-repeat", Href = "coming-soon?page=Update Lab Stock" }
+}
+}
+}
+}
+};
+    private void HandleMenuExpand(MenuItem expandedItem)
+    {
+        // Close other items at the same level
+        var parent = FindParentMenuItem(expandedItem);
+        var siblings = parent?.Children ?? MenuItems;
+
+        foreach (var item in siblings)
+        {
+            if (item != expandedItem)
+            {
+                item.IsExpanded = false;
+                // Also collapse all children
+                CollapseAllChildren(item);
+            }
+        }
+        StateHasChanged();
+    }
+    private void CollapseAllChildren(MenuItem item)
+    {
+        foreach (var child in item.Children)
+        {
+            child.IsExpanded = false;
+            CollapseAllChildren(child);
+        }
+    }
+
+    private MenuItem? FindParentMenuItem(MenuItem target)
+    {
+        return FindParentMenuItemRecursive(target, MenuItems, null);
+    }
+
+    private MenuItem? FindParentMenuItemRecursive(MenuItem target, List<MenuItem> items, MenuItem? parent)
+    {
+        foreach (var item in items)
+        {
+            if (item == target) return parent;
+            var found = FindParentMenuItemRecursive(target, item.Children, item);
+            if (found != null) return found;
+        }
+        return null;
+    }
+}

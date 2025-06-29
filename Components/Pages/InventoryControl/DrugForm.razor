@@ -1,0 +1,138 @@
+﻿@using BlazorApp1.Components.Models
+@using BlazorApp1.Components.Services
+@using BlazorApp1.Components.Shared
+@inject ILogger<DrugEntry> Logger
+@inject IDrugService DrugService
+
+@inject NavigationManager NavigationManager
+
+<Notifications @ref="notifications" />
+
+<div class="modal d-block" tabindex="-1"
+    style="background-color: rgba(0,0,0,0.5); position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; z-index: 1050;">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 500px;">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h5 class="modal-title">
+                    @(string.IsNullOrEmpty(Drug.DrugNo)
+                                        ? "Add New Drug"
+                                        : $"Edit Drug - {Drug.DrugName}")
+                </h5>
+                <button type="button" class="btn-close" @onclick="OnCancel"></button>
+            </div>
+            <div class="modal-body">
+                <EditForm Model="@Drug" OnValidSubmit="HandleValidSubmit">
+                    <DataAnnotationsValidator />
+
+                    <div class="row mb-3">
+                        <label class="col-4 col-form-label">Drug Type</label>
+                        <div class="col-8">
+                            <InputSelect @bind-Value="Drug.DrugTypeNo" class="form-select form-select-sm">
+                                <option value="">Select Drug Type</option>
+                                @foreach (var type in drugTypes)
+                                {
+                                    <option value="@type.DrugTypeNo">@type.DrugTypeName</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-4 col-form-label">Drug Name</label>
+                        <div class="col-8">
+                            <InputText @bind-Value="Drug.DrugName" class="form-control form-control-sm" />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-4 col-form-label">Manufacturer</label>
+                        <div class="col-8">
+                            <InputSelect @bind-Value="Drug.Manufacturer" class="form-select form-select-sm" disabled
+                                aria-disabled="true">
+                                <option value="">Select Manufacturer</option>
+                                @foreach (var manufacturer in manufacturers)
+                                {
+                                    <option value="@manufacturer">@manufacturer</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-4 col-form-label">Stock Quantity</label>
+                        <div class="col-4">
+                            <input type="number" class="form-control form-control-sm" value="@Drug.StockQuantity"
+                                disabled />
+                        </div>
+                        <label class="col-2 col-form-label ps-4">Reorder</label>
+                        <div class="col-2">
+                            <InputNumber @bind-Value="Drug.ReorderLevel" class="form-control form-control-sm" />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-4 col-form-label">Description</label>
+                        <div class="col-8">
+                            <InputTextArea @bind-Value="Drug.Description" class="form-control form-control-sm" rows="2"
+                                disabled />
+                        </div>
+                    </div>
+
+                    <div class="modal-footer py-1">
+                        <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                        <button type="button" class="btn btn-secondary btn-sm" @onclick="OnCancel">Cancel</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+@code {
+    [Parameter]
+    public DrugModel Drug { get; set; } = new();
+
+    [Parameter]
+    public EventCallback OnSave { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private List<DrugTypeModel> drugTypes = new();
+    private List<string> manufacturers = new();
+    private Notifications notifications = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Logger.LogWarning("DrugForm initialized with Drug: DrugNo={DrugNo}, Name={Name}, Type={Type}",
+        Drug.DrugNo, Drug.DrugName, Drug.DrugTypeNo);
+        drugTypes = await DrugService.GetDrugTypesAsync();
+        manufacturers = await DrugService.GetManufacturersAsync();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        Logger.LogDebug("handles valid submit called");
+        try
+        {
+            Logger.LogInformation("Saving drug: {DrugName}", Drug.DrugName);
+            await DrugService.SaveDrugAsync(Drug);
+            if (notifications != null)
+            {
+                await notifications.ShowAsync("Drug saved successfully", NotificationType.Success);
+            }
+            await OnSave.InvokeAsync();
+            Logger.LogInformation("Drug saved successfully: {DrugName}", Drug.DrugName);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving drug");
+            if (notifications != null)
+            {
+                await notifications.ShowAsync("Failed to save drug", NotificationType.Error);
+            }
+        }
+    }
+}

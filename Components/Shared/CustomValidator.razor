@@ -1,0 +1,59 @@
+﻿@implements IDisposable
+
+@code {
+    private ValidationMessageStore? messageStore;
+    private EditContext? currentEditContext;
+
+    [CascadingParameter]
+    private EditContext? EditContext { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (EditContext is null)
+        {
+            throw new InvalidOperationException(
+            $"{nameof(CustomValidator)} requires a cascading parameter of type {nameof(EditContext)}.");
+        }
+
+        messageStore = new(EditContext);
+        currentEditContext = EditContext;
+        EditContext.OnValidationRequested += ValidationRequested;
+    }
+
+    public async Task DisplayErrors(IEnumerable<string> errors)
+    {
+        if (messageStore is null || currentEditContext is null) return;
+
+        messageStore.Clear();
+        messageStore.Add(new FieldIdentifier(currentEditContext.Model, ""), errors);
+        currentEditContext.NotifyValidationStateChanged();
+    }
+
+    public void ClearErrors()
+    {
+        messageStore?.Clear();
+        currentEditContext?.NotifyValidationStateChanged();
+    }
+
+    private void ValidationRequested(object? sender, ValidationRequestedEventArgs args)
+    {
+        messageStore?.Clear();
+    }
+
+    public string FieldCssClass(FieldIdentifier fieldIdentifier)
+    {
+        if (currentEditContext?.GetValidationMessages(fieldIdentifier).Any() == true)
+        {
+            return "is-invalid";
+        }
+        return string.Empty;
+    }
+
+    public void Dispose()
+    {
+        if (currentEditContext is not null)
+        {
+            currentEditContext.OnValidationRequested -= ValidationRequested;
+        }
+    }
+}

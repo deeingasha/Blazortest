@@ -1,0 +1,149 @@
+﻿@page "/department-info"
+@page "/department-info/{Id}"
+@rendermode InteractiveServer
+@using BlazorApp1.Components.Core
+@using BlazorApp1.Components.Models
+@using BlazorApp1.Components.Services
+@using BlazorApp1.Components.Shared
+@inject NavigationManager NavigationManager
+@inject IDepartmentService DepartmentService
+@inject ILogger<DepartmentInfo> Logger
+
+<Notifications @ref="notifications" />
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h3>@(string.IsNullOrEmpty(Id) ? "Add New Department" : "Edit Department")</h3>
+            <EditForm Model="@formModel" OnValidSubmit="HandleValidSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label>Department Number</label>
+                            @* @if (!string.IsNullOrEmpty(Id))
+                            { *@
+                            <InputText @bind-Value="formModel.Department_No" class="form-control" readonly
+                                aria-readonly="true" />
+                            @* } *@
+                            @* <InputText @bind-Value="formModel.Department_No" class="form-control" />
+                            <ValidationMessage For="@(() => formModel.Department_No)" /> *@
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label>Department Name</label>
+                            <InputText @bind-Value="formModel.Department_name" class="form-control" />
+                            <ValidationMessage For="@(() => formModel.Department_name)" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label>Company Number</label>
+                            <InputText @bind-Value="formModel.Company_No" class="form-control" />
+                            <ValidationMessage For="@(() => formModel.Company_No)" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label>Clinic Branch Number</label>
+                            <InputText @bind-Value="formModel.Clinic_Branch_No" class="form-control" />
+                            <ValidationMessage For="@(() => formModel.Clinic_Branch_No)" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <span class="bi bi-save"></span> Save
+                        </button>
+                        <button type="button" class="btn btn-secondary" @onclick="NavigateBack">
+                            <span class="bi bi-arrow-left"></span> Cancel
+                        </button>
+                    </div>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string? Id { get; set; }
+
+    private Notifications notifications = default!;
+
+    private DepartmentModel formModel = new()
+    {
+        Department_No = string.Empty,
+        Department_name = string.Empty,
+        Company_No = string.Empty,
+        Clinic_Branch_No = string.Empty
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Logger.LogDebug("Initializing DepartmentInfo with Id: {Id}", Id);
+            if (!string.IsNullOrEmpty(Id))
+            {
+                var department = await DepartmentService.GetDepartmentAsync(Id);
+                if (department != null)
+                {
+                    formModel = department;
+                }
+                Logger.LogInformation("Loaded department with Id: {Id}", Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load department");
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            Logger.LogDebug("Saving department with data: {@FormModel}", formModel);
+
+            await DepartmentService.SaveDepartmentAsync(formModel);
+            Logger.LogInformation("Department saved successfully");
+
+            // Force a refresh of the data
+            if (!string.IsNullOrEmpty(Id))
+            {
+                formModel = await DepartmentService.GetDepartmentAsync(Id);
+                StateHasChanged();
+            }
+
+            if (notifications is not null)
+            {
+                await notifications.ShowAsync("Department saved successfully", NotificationType.Success);
+            }
+            NavigateBack();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to save department");
+            if (notifications != null)
+            {
+                await notifications.ShowAsync("Failed to save department: ", NotificationType.Error);
+            }
+        }
+    }
+
+    private void NavigateBack()
+    {
+        NavigationManager.NavigateTo("departments");
+    }
+}

@@ -1,0 +1,111 @@
+@typeparam TItem
+
+<div class="position-relative">
+    <input type="text" class="form-control form-control-sm" placeholder="@Placeholder" @bind="SearchText"
+        @oninput="FilterItems" @onfocus="() => ShowDropdown = true" @onblur="HideDropdownWithDelay" />
+
+    @if (ShowDropdown && FilteredItems?.Any() == true)
+    {
+    <div class="dropdown-menu show w-100" style="margin-top: 2px; max-height: 200px; overflow-y: auto;">
+        @foreach (var item in FilteredItems)
+        {
+            <button type="button" class="dropdown-item @(IsSelected(item) ? "active" : "")"
+                @onmousedown="() => SelectItem(item)">
+                @ItemText(item)
+            </button>
+        }
+    </div>
+    }
+</div>
+
+<style>
+    .position-relative {
+        font-size: 0.75rem;
+        /* Even smaller than .form-control-sm */
+    }
+
+    .dropdown-menu {
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        font-size: 0.75rem;
+    }
+
+    .dropdown-item {
+        padding: 0.25rem 0.75rem;
+        font-size: 0.75rem;
+        line-height: 1.2;
+    }
+
+    :deep(input.form-control-sm) {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        min-height: calc(1.5em + 0.5rem + 2px);
+    }
+
+    .dropdown-item:hover {
+        background-color: #e9ecef;
+        cursor: pointer;
+    }
+
+    .dropdown-item.active {
+        background-color: #e9ecef;
+        color: #000;
+    }
+</style>
+
+@code {
+    [Parameter] public List<TItem> Items { get; set; }
+    [Parameter] public Func<TItem, string> ItemText { get; set; }
+    [Parameter] public EventCallback<TItem> OnSelected { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Search...";
+    [Parameter] public TItem? Value { get; set; }
+
+    private string SearchText { get; set; }
+    private List<TItem> FilteredItems { get; set; } = new();
+    private bool ShowDropdown { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (Value != null && string.IsNullOrEmpty(SearchText))
+        {
+            SearchText = ItemText(Value);
+        }
+        if (FilteredItems.Count == 0)
+        {
+            FilteredItems = Items.ToList();
+        }
+    }
+
+    private void FilterItems(ChangeEventArgs e)
+    {
+        SearchText = e?.Value?.ToString() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(SearchText))
+        {
+            FilteredItems = Items.ToList();
+        }
+        else
+        {
+            FilteredItems = Items
+            .Where(item => ItemText(item).Contains(SearchText, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        }
+        ShowDropdown = true;
+    }
+
+    private void SelectItem(TItem item)
+    {
+        SearchText = ItemText(item);
+        ShowDropdown = false;
+        OnSelected.InvokeAsync(item);
+    }
+
+    private async Task HideDropdownWithDelay()
+    {
+        await Task.Delay(200);
+        ShowDropdown = false;
+    }
+
+    private bool IsSelected(TItem item) =>
+    SearchText == ItemText(item);
+}
